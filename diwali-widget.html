@@ -3,178 +3,82 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Diwali Mini Animation</title>
+<title>Happy Diwali Animation</title>
 <style>
-  :root{ --bg:#fff; --accent:#ff5a00; --text:#222; }
-  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
-  body{display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#fff8ec,#fff);overflow:hidden}
-  .stage{width:360px;height:240px;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.12);background:linear-gradient(180deg,#fff,#fff9f2);position:relative;overflow:hidden}
-  .hint{position:absolute;left:12px;top:8px;font-size:12px;color:#666}
-  /* man container */
-  .man{position:absolute;left:20px;bottom:20px;width:120px;height:120px;cursor:pointer;transform-origin:center bottom;touch-action:manipulation}
-  .man svg{width:100%;height:100%;display:block}
-  /* movement animation - triggered by `.moving` */
-  .man.moving{transition: transform 2.2s cubic-bezier(.2,.9,.2,1); transform: translateX(200px) scale(1.02) }
-  /* simple bob while moving */
-  .man.moving .bob { animation: bob 0.45s ease-in-out infinite alternate; transform-origin:center; }
-  @keyframes bob { from{transform: translateY(0)} to{transform: translateY(-6px)} }
-
-  /* explosion / burned look */
-  .burned-overlay{
-    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    pointer-events:none;opacity:0;transition:opacity .35s ease;
-    background: radial-gradient(circle at 50% 30%, rgba(255,220,180,.18), rgba(0,0,0,0.02) 40%);
-  }
-  .burned-overlay.show{opacity:1;pointer-events:auto}
-  .message{
-    background:rgba(255,255,255,0.9);padding:10px 16px;border-radius:10px;
-    box-shadow:0 6px 20px rgba(0,0,0,.12);font-weight:700;color:var(--text);
-    display:flex;gap:10px;align-items:center;font-size:16px;
-  }
-  .spark {
-    width:28px;height:28px;border-radius:50%;display:inline-grid;place-items:center;
-    font-weight:900;color:white;background:var(--accent);transform:scale(.9);
-    box-shadow:0 6px 18px rgba(255,90,0,.25);
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #fff8ec;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  /* small responsive behavior for small embeds */
-  @media (max-width:420px){ .stage{width:320px;height:220px} }
+  /* Moving man */
+  #man {
+    position: absolute;
+    width: 150px; /* smaller for better movement */
+    height: auto;
+    cursor: pointer;
+    transition: transform 1.5s ease;
+    z-index: 2;
+  }
+
+  /* Explosion and greeting fullscreen images */
+  #explosion, #greeting {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* prevents cropping */
+    display: none;
+    z-index: 1;
+    background-color: #fff8ec;
+  }
 </style>
 </head>
 <body>
-  <div class="stage" role="application" aria-label="Diwali interactive">
-    <div class="hint">Tap/click the man →</div>
-
-    <!-- Man SVG container (static initially) -->
-    <div class="man" id="man" title="Click me">
-      <!-- Simple stylized SVG: person carrying a cracker (cracker is the small red rectangle near hand) -->
-      <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-        <!-- ground shadow -->
-        <ellipse cx="60" cy="100" rx="36" ry="6" fill="rgba(0,0,0,.08)"/>
-        <!-- body -->
-        <g class="bob">
-          <!-- legs -->
-          <path d="M48 86 L54 72 L60 86" stroke="#2d3440" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <path d="M72 86 L66 72 L60 86" stroke="#2d3440" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <!-- torso -->
-          <rect x="52" y="44" width="16" height="28" rx="4" fill="#1f6f8b"/>
-          <!-- head -->
-          <circle cx="60" cy="34" r="10" fill="#ffddb8" stroke="#b47a57" stroke-width=".8"/>
-          <!-- arm carrying the cracker -->
-          <path d="M68 54 L84 46" stroke="#ffddb8" stroke-width="6" stroke-linecap="round"/>
-          <!-- cracker (red rectangle with wick) -->
-          <g id="cracker" transform="translate(84,34)">
-            <rect x="-4" y="-4" width="18" height="10" rx="2" fill="#d63333" stroke="#7a0b0b" stroke-width=".8"/>
-            <rect x="12" y="0" width="4" height="2" fill="#222"/>
-            <circle cx="9" cy="1" r="1.2" fill="#ffd24d"/>
-          </g>
-        </g>
-      </svg>
-    </div>
-
-    <!-- burned overlay (hidden until exploded) -->
-    <div class="burned-overlay" id="overlay" aria-hidden="true">
-      <div class="message" role="status" aria-live="polite">
-        <div class="spark">✨</div>
-        <div>Happy Diwali</div>
-      </div>
-    </div>
-  </div>
+  <img id="man" src="boy.jpg" alt="Man with cracker" />
+  <img id="explosion" src="fly.jpg" alt="Explosion" />
+  <img id="greeting" src="happy-diwali.jpg" alt="Happy Diwali" />
 
 <script>
-(function(){
-  const man = document.getElementById('man');
-  const overlay = document.getElementById('overlay');
+const man = document.getElementById('man');
+const explosion = document.getElementById('explosion');
+const greeting = document.getElementById('greeting');
+let moveInterval;
 
-  // States: 'idle' -> 'moving' -> 'exploded'
-  let state = 'idle';
+// random movement within screen bounds
+function randomMove() {
+  const maxX = window.innerWidth - man.clientWidth - 20;
+  const maxY = window.innerHeight - man.clientHeight - 20;
+  const x = Math.random() * maxX;
+  const y = Math.random() * maxY;
+  man.style.transform = `translate(${x}px, ${y}px)`;
+}
 
-  // First click: start moving
-  // Second click (while moving): explode
-  man.addEventListener('click', () => {
-    if(state === 'idle'){
-      state = 'moving';
-      man.classList.add('moving');
+// start moving every 1.5s
+function startMoving() {
+  randomMove();
+  moveInterval = setInterval(randomMove, 1500);
+}
 
-      // Optionally, after movement ends, keep it moving or stop - we stop in place.
-      // Listen for transitionend to know when movement finished.
-      man.addEventListener('transitionend', function onEnd(e){
-        // Only handle the transform transition
-        if(e.propertyName === 'transform'){
-          man.removeEventListener('transitionend', onEnd);
-          // keep state as 'moving' — user can tap while moving or after it stops
-        }
-      });
-      return;
-    }
+man.addEventListener('click', () => {
+  clearInterval(moveInterval);
+  man.style.display = 'none';
+  explosion.style.display = 'block';
 
-    if(state === 'moving'){
-      // explode: replace cracker with burnt look and show message
-      state = 'exploded';
-      // animate small burst at cracker position
-      explodeEffect();
-    }
-  });
+  // show explosion for 1s, then greeting
+  setTimeout(() => {
+    explosion.style.display = 'none';
+    greeting.style.display = 'block';
+  }, 1000);
+});
 
-  function explodeEffect(){
-    // swap cracker into a 'burned' visual by replacing inner HTML
-    const cracker = document.getElementById('cracker');
-    if(cracker){
-      cracker.innerHTML = `
-        <g transform="translate(4,2)">
-          <path d="M0 0 q6 -6 12 0 q-6 6 -12 0" fill="#2b2b2b" />
-          <rect x="-6" y="-6" width="20" height="12" rx="3" fill="#463f3f" opacity=".95"/>
-          <circle cx="5" cy="0" r="2.2" fill="#ffda7a" opacity=".85"/>
-        </g>
-      `;
-    }
-    // show overlay message
-    overlay.classList.add('show');
-    overlay.setAttribute('aria-hidden','false');
-
-    // brief sparkle animation: scale message
-    const msg = overlay.querySelector('.message');
-    msg.animate([
-      { transform: 'translateY(10px) scale(.9)', opacity: 0 },
-      { transform: 'translateY(0px) scale(1.03)', opacity: 1 },
-      { transform: 'translateY(0px) scale(1)', opacity: 1 }
-    ], { duration: 600, easing: 'cubic-bezier(.22,.9,.3,1)' });
-
-    // disable further clicks (optional)
-    man.style.pointerEvents = 'none';
-  }
-
-  // Accessibility: allow keyboard activation
-  man.setAttribute('tabindex','0');
-  man.addEventListener('keydown', (ev)=>{
-    if(ev.key === 'Enter' || ev.key === ' '){
-      ev.preventDefault();
-      man.click();
-    }
-  });
-
-  // If embedded as a small icon link, allow clicking outside to reset (optional)
-  overlay.addEventListener('click', () => {
-    // hide overlay and reset state to allow repeat runs
-    overlay.classList.remove('show');
-    overlay.setAttribute('aria-hidden','true');
-    man.style.pointerEvents = '';
-    man.classList.remove('moving');
-    state = 'idle';
-    // restore original cracker after a short delay
-    setTimeout(()=> {
-      const cracker = document.getElementById('cracker');
-      if(cracker){
-        cracker.innerHTML = `
-          <rect x="-4" y="-4" width="18" height="10" rx="2" fill="#d63333" stroke="#7a0b0b" stroke-width=".8"/>
-          <rect x="12" y="0" width="4" height="2" fill="#222"/>
-          <circle cx="9" cy="1" r="1.2" fill="#ffd24d"/>
-        `;
-      }
-    }, 260);
-  });
-
-})();
+startMoving();
+window.addEventListener('resize', randomMove);
 </script>
 </body>
 </html>
